@@ -1,4 +1,4 @@
-#!python2
+#!python3
 #    Copyright (C) 2009 Yaron Inger, http://ingeration.blogspot.com
 #
 #    This program is free software; you can redistribute it and/or modify
@@ -72,6 +72,14 @@ class Winamp(object):
 
     # deletes an index: lParam = index
     IPC_PE_DELETEINDEX = 104
+    # resets the dirty flag until next modification
+    IPC_PE_SETCLEAN	= 108
+
+    # New: Used to get Playlist hwnd correctly
+    # Get window
+    IPC_GETWND = 260
+    # Get playlist editor Window
+    IPC_GETWND_PE =  1
 
     # playback possible options
     PLAYBACK_NOT_PLAYING = 0
@@ -186,13 +194,16 @@ class Winamp(object):
         # get important Winamp's window handles
         try:
             self.__mainWindowHWND = self.__findWindow([("Winamp v1.x", None)])
-            self.__playlistHWND = self.__findWindow([("BaseWindow_RootWnd", None), 
-                ("BaseWindow_RootWnd", "Playlist Editor"), 
-                ("Winamp PE", "Winamp Playlist Editor")])
+            # New
+            self.__playlistHWND = win32api.SendMessage(self.__mainWindowHWND,
+                    self.WM_WA_IPC,self.IPC_GETWND_PE,self.IPC_GETWND)
+            # self.__playlistHWND = self.__findWindow([("BaseWindow_RootWnd", None), 
+            #     ("BaseWindow_RootWnd", "Playlist Editor"), 
+            #     ("Winamp PE", "Winamp Playlist Editor")])
             self.__mediaLibraryHWND = self.__findWindow([("BaseWindow_RootWnd", None), 
                 ("BaseWindow_RootWnd", "Winamp Library"), 
                 ("Winamp Gen", "Winamp Library"), (None, None)])
-        except (pywintypes.error, e):
+        except pywintypes.error as e:
             raise RuntimeError("Cannot find Winamp windows. Is winamp started?")
 
         self.__processID = win32process.GetWindowThreadProcessId(self.__mainWindowHWND)[1]
@@ -221,7 +232,7 @@ class Winamp(object):
         """
         currentWindow = None
 
-        for i in xrange(len(windowList)):
+        for i in range(len(windowList)):
             if currentWindow is None:
                 currentWindow = win32gui.FindWindow(windowList[i][0],
                         windowList[i][1])
@@ -298,8 +309,12 @@ class Winamp(object):
         index = position in playlist.
         '''
         # SendMessage(playlist_window,WM_WA_IPC,IPC_PE_DELETEINDEX,index_of_file)
-        win32api.SendMessage(self.__playlistHWND, self.WM_WA_IPC,
+        self.__init__()
+        ret = win32api.SendMessage(self.__playlistHWND, self.WM_WA_IPC,
                 self.IPC_PE_DELETEINDEX, index)
+        win32api.SendMessage(self.__playlistHWND, self.WM_WA_IPC,
+                self.IPC_PE_SETCLEAN, index)
+        return ret
 
     def query(self, queryString, queryType = ML_IPC_DB_RUNQUERY):
         """Queries Winamp's media library and returns a list of items matching the query.
@@ -326,7 +341,7 @@ class Winamp(object):
         windll.kernel32.ReadProcessMemory(self.__hProcess,
                 receivedQuery.itemRecordList.Items, buf, sizeof(buf), 0)
 
-        for i in xrange(receivedQuery.itemRecordList.Size):
+        for i in range(receivedQuery.itemRecordList.Size):
             item = self.__readDataFromWinamp(receivedQuery.itemRecordList.Items
                     + (sizeof(self.itemRecord) * i), self.itemRecord)
 
@@ -391,7 +406,7 @@ class Winamp(object):
     def __fixRemoteStruct(self, structure):
         offset = 0
 
-        for i in xrange(len(structure._fields_)):
+        for i in range(len(structure._fields_)):
             (field_name, field_type) = structure._fields_[i]
 
             if field_type is c_char_p or field_type is c_void_p:
@@ -540,10 +555,10 @@ if __name__ == "__main__":
     items = w.query("artist has \"opeth\"")
     [printMediaLibraryItem(item) for item in items]
 
-    w.playlist = w.query("artist has \"jane's\"")
-    w.sortPlaylist()
+    # w.playlist = w.query("artist has \"jane's\"")
+    # w.sortPlaylist()
 
-    print w.playlist
+    # print w.playlist
 
-    "Playing album..."
-    w.playAlbum("Red")
+    # "Playing album..."
+    # w.playAlbum("Red")
