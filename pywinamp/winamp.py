@@ -23,6 +23,11 @@
 #
 #    31/12/2009 Version 0.2
 #    	- Added support for keyword queries (queryAsKeyword)
+#    
+#    27/11/2014 Version 0.3
+#       - python 3
+#       - Added getListPosition() and getPlayingFilename()
+#       - Fixed playlist window HWND handling
 
 from ctypes import *
 import win32api, win32con, win32gui, win32process, pywintypes
@@ -75,7 +80,7 @@ class Winamp(object):
     # resets the dirty flag until next modification
     IPC_PE_SETCLEAN	= 108
 
-    # New: Used to get Playlist hwnd correctly
+    # NEW: Used to get Playlist hwnd correctly
     # Get window
     IPC_GETWND = 260
     # Get playlist editor Window
@@ -194,7 +199,7 @@ class Winamp(object):
         # get important Winamp's window handles
         try:
             self.__mainWindowHWND = self.__findWindow([("Winamp v1.x", None)])
-            # New
+            # NEW
             self.__playlistHWND = win32api.SendMessage(self.__mainWindowHWND,
                     self.WM_WA_IPC,self.IPC_GETWND_PE,self.IPC_GETWND)
             # self.__playlistHWND = self.__findWindow([("BaseWindow_RootWnd", None), 
@@ -452,8 +457,7 @@ class Winamp(object):
 
     # NEW
     def getPlayingFilename(self):
-        """Gets the position of the current playing track in the
-        playlist."""
+        """Gets the filename of the currently playing track."""
         address = self.__sendUserMessage(0, self.IPC_GET_PLAYING_FILENAME)
 
         return self.__readStringFromMemory(address, True)
@@ -496,7 +500,7 @@ class Winamp(object):
 
     # NEW
     def getListPosition(self):
-        """Returns the current position in the list."""
+        """Returns the current position in the active playlist."""
         return self.__sendUserMessage(0, self.IPC_GETLISTPOS)
 
     def getPlaylistFilenames(self):
